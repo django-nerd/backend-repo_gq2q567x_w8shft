@@ -1,6 +1,11 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional
+from bson import ObjectId
+
+from database import db, create_document, get_documents
 
 app = FastAPI()
 
@@ -14,11 +19,80 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"message": "Hello from FastAPI Backend!"}
+    return {"message": "HRMS Backend is running"}
 
-@app.get("/api/hello")
-def hello():
-    return {"message": "Hello from the backend API!"}
+# Admin-lite endpoints for HRMS core entities
+class EmployeeCreate(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    phone: Optional[str] = None
+    department_id: Optional[str] = None
+    role: Optional[str] = None
+
+class DepartmentCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class LeaveCreate(BaseModel):
+    employee_id: str
+    start_date: str
+    end_date: str
+    reason: Optional[str] = None
+
+@app.post("/api/departments")
+def create_department(payload: DepartmentCreate):
+    try:
+        dep_id = create_document("department", payload)
+        return {"id": dep_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/departments")
+def list_departments():
+    try:
+        items = get_documents("department")
+        for it in items:
+            it["id"] = str(it.pop("_id"))
+        return items
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/employees")
+def create_employee(payload: EmployeeCreate):
+    try:
+        emp_id = create_document("employee", payload)
+        return {"id": emp_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/employees")
+def list_employees():
+    try:
+        items = get_documents("employee")
+        for it in items:
+            it["id"] = str(it.pop("_id"))
+        return items
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/leaves")
+def create_leave(payload: LeaveCreate):
+    try:
+        leave_id = create_document("leave", payload)
+        return {"id": leave_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/leaves")
+def list_leaves():
+    try:
+        items = get_documents("leave")
+        for it in items:
+            it["id"] = str(it.pop("_id"))
+        return items
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/test")
 def test_database():
@@ -31,39 +105,26 @@ def test_database():
         "connection_status": "Not Connected",
         "collections": []
     }
-    
     try:
-        # Try to import database module
-        from database import db
-        
         if db is not None:
             response["database"] = "✅ Available"
             response["database_url"] = "✅ Configured"
             response["database_name"] = db.name if hasattr(db, 'name') else "✅ Connected"
             response["connection_status"] = "Connected"
-            
-            # Try to list collections to verify connectivity
             try:
                 collections = db.list_collection_names()
-                response["collections"] = collections[:10]  # Show first 10 collections
+                response["collections"] = collections[:10]
                 response["database"] = "✅ Connected & Working"
             except Exception as e:
                 response["database"] = f"⚠️  Connected but Error: {str(e)[:50]}"
         else:
             response["database"] = "⚠️  Available but not initialized"
-            
-    except ImportError:
-        response["database"] = "❌ Database module not found (run enable-database first)"
     except Exception as e:
         response["database"] = f"❌ Error: {str(e)[:50]}"
-    
-    # Check environment variables
-    import os
+
     response["database_url"] = "✅ Set" if os.getenv("DATABASE_URL") else "❌ Not Set"
     response["database_name"] = "✅ Set" if os.getenv("DATABASE_NAME") else "❌ Not Set"
-    
     return response
-
 
 if __name__ == "__main__":
     import uvicorn

@@ -12,9 +12,55 @@ Model name is converted to lowercase for the collection name:
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Literal
+from datetime import date
 
-# Example schemas (replace with your own):
+# ---------------- HRMS Schemas ----------------
+
+class Employee(BaseModel):
+    """
+    Employees collection schema
+    Collection name: "employee"
+    """
+    first_name: str = Field(..., description="First name")
+    last_name: str = Field(..., description="Last name")
+    email: str = Field(..., description="Work email")
+    phone: Optional[str] = Field(None, description="Phone number")
+    department_id: Optional[str] = Field(None, description="Department ObjectId as string")
+    role: Optional[str] = Field(None, description="Job title/role")
+    hire_date: Optional[date] = Field(None, description="Hire date")
+    status: Literal["active", "inactive"] = Field("active", description="Employment status")
+
+class Department(BaseModel):
+    """
+    Departments collection schema
+    Collection name: "department"
+    """
+    name: str = Field(..., description="Department name")
+    description: Optional[str] = Field(None, description="Description")
+
+class Leave(BaseModel):
+    """
+    Leave requests collection schema
+    Collection name: "leave"
+    """
+    employee_id: str = Field(..., description="Employee ObjectId as string")
+    start_date: date = Field(..., description="Start date")
+    end_date: date = Field(..., description="End date")
+    reason: Optional[str] = Field(None, description="Reason for leave")
+    status: Literal["pending", "approved", "rejected"] = Field("pending", description="Approval status")
+
+class Attendance(BaseModel):
+    """
+    Attendance events collection schema
+    Collection name: "attendance"
+    """
+    employee_id: str = Field(..., description="Employee ObjectId as string")
+    date: date = Field(..., description="Attendance date")
+    type: Literal["checkin", "checkout"] = Field(..., description="Event type")
+    note: Optional[str] = Field(None, description="Optional note")
+
+# Example schemas (left for reference):
 
 class User(BaseModel):
     """
@@ -37,9 +83,6 @@ class Product(BaseModel):
     price: float = Field(..., ge=0, description="Price in dollars")
     category: str = Field(..., description="Product category")
     in_stock: bool = Field(True, description="Whether product is in stock")
-
-# Add your own schemas here:
-# --------------------------------------------------
 
 # Note: The Flames database viewer will automatically:
 # 1. Read these schemas from GET /schema endpoint
